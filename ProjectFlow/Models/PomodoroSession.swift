@@ -1,3 +1,10 @@
+//
+//  PomodoroSession.swift
+//  ProjectFlow
+//
+//  Created by Rogerio Pires on 30/05/26.
+//
+
 import Foundation
 import SwiftData
 
