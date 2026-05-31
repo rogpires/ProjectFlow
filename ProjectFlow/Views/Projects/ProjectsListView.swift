@@ -7,19 +7,21 @@ struct ProjectsListView: View {
     @Query(sort: \Project.createdAt, order: .reverse) private var projects: [Project]
     @State private var showingNewProject = false
     @State private var filterStatus: ProjectStatus?
+    @State private var sortOption: ProjectSortOption = .startDateNewest
 
     private var filteredProjects: [Project] {
-        projects.filter { project in
+        let filtered = projects.filter { project in
             let matchesSearch = appState.searchText.isEmpty ||
                 project.name.localizedCaseInsensitiveContains(appState.searchText)
             let matchesStatus = filterStatus == nil || project.status == filterStatus
             return matchesSearch && matchesStatus
         }
+        return sortOption.sort(filtered)
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            VStack(alignment: .leading, spacing: 12) {
                 Picker("Status", selection: $filterStatus) {
                     Text("Todos").tag(nil as ProjectStatus?)
                     ForEach(ProjectStatus.allCases) { status in
@@ -27,16 +29,25 @@ struct ProjectsListView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 400)
 
-                Spacer()
+                HStack(spacing: 12) {
+                    Picker("Ordenar", selection: $sortOption) {
+                        ForEach(ProjectSortOption.allCases) { option in
+                            Label(option.rawValue, systemImage: option.icon).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .fixedSize()
 
-                Button {
-                    showingNewProject = true
-                } label: {
-                    Label("Novo Projeto", systemImage: "plus")
+                    Spacer()
+
+                    Button {
+                        showingNewProject = true
+                    } label: {
+                        Label("Novo Projeto", systemImage: "plus")
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
             }
             .padding()
 

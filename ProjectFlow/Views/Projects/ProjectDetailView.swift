@@ -10,11 +10,13 @@ struct ProjectDetailView: View {
     @State private var showingEdit = false
     @State private var showingNewTask = false
     @State private var showingDeleteConfirm = false
+    @State private var taskSortOption: TaskSortOption = .priority
 
     private var projectTasks: [TaskItem] {
-        TimeEntryQueryHelper.uniqueByID(
+        let tasks = TimeEntryQueryHelper.uniqueByID(
             allTasks.filter { $0.project?.persistentModelID == project.persistentModelID }
-        ).sorted { $0.priority.sortOrder < $1.priority.sortOrder }
+        )
+        return taskSortOption.sort(tasks)
     }
 
     var body: some View {
@@ -124,8 +126,24 @@ struct ProjectDetailView: View {
 
     private var tasksSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Tarefas") {
-                showingNewTask = true
+            HStack(spacing: 12) {
+                Text("Tarefas")
+                    .font(.title2.bold())
+
+                Spacer(minLength: 16)
+
+                Picker("Ordenar", selection: $taskSortOption) {
+                    ForEach(TaskSortOption.allCases) { option in
+                        Label(option.rawValue, systemImage: option.icon).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+
+                Button("Adicionar") {
+                    showingNewTask = true
+                }
+                .buttonStyle(.borderedProminent)
             }
 
             if projectTasks.isEmpty {

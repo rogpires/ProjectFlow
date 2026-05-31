@@ -48,6 +48,7 @@ struct TaskDTO: Codable {
     var priorityRaw: String
     var statusRaw: String
     var estimatedSeconds: TimeInterval
+    var manualWorkedSeconds: TimeInterval?
     var actualSeconds: TimeInterval
     var createdAt: Date
     var completedAt: Date?

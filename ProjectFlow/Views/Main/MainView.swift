@@ -5,6 +5,7 @@ struct MainView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppState.self) private var appState
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var showStoreResetAlert = false
 
     var body: some View {
         @Bindable var state = appState
@@ -67,10 +68,19 @@ struct MainView: View {
         .onAppear {
             appState.modelContext = context
             TimeEntryCleanupService.cleanupDuplicates(in: context)
+            if ModelContainerFactory.didResetStoreDueToMigration {
+                showStoreResetAlert = true
+                ModelContainerFactory.clearStoreResetFlag()
+            }
             if appState.syncService.isConfigured {
                 appState.syncService.startPolling()
                 Task { await appState.syncService.syncNow() }
             }
+        }
+        .alert("Banco de dados recriado", isPresented: $showStoreResetAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("O banco local foi recriado após uma atualização. Se você usa sincronização iCloud, os dados devem ser restaurados automaticamente.")
         }
     }
 

@@ -303,6 +303,7 @@ final class iCloudDriveSyncService {
         task.priorityRaw = dto.priorityRaw
         task.statusRaw = dto.statusRaw
         task.estimatedSeconds = dto.estimatedSeconds
+        task.manualWorkedSeconds = dto.manualWorkedSeconds ?? task.manualWorkedSeconds
         task.actualSeconds = dto.actualSeconds
         task.createdAt = dto.createdAt
         task.completedAt = dto.completedAt
@@ -499,6 +500,7 @@ final class iCloudDriveSyncService {
             priorityRaw: task.priorityRaw,
             statusRaw: task.statusRaw,
             estimatedSeconds: task.estimatedSeconds,
+            manualWorkedSeconds: task.manualWorkedSeconds,
             actualSeconds: task.actualSeconds,
             createdAt: task.createdAt,
             completedAt: task.completedAt

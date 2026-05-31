@@ -14,6 +14,7 @@ struct TaskFormView: View {
     @State private var priority: TaskPriority = .medium
     @State private var status: TaskStatus = .todo
     @State private var estimatedHours = 0.0
+    @State private var workedHours = 0.0
 
     var body: some View {
         NavigationStack {
@@ -31,12 +32,25 @@ struct TaskFormView: View {
                         Text(s.rawValue).tag(s)
                     }
                 }
-                HStack {
-                    Text("Tempo estimado (horas)")
-                    Spacer()
-                    TextField("0", value: $estimatedHours, format: .number)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
+
+                Section("Tempo") {
+                    HStack {
+                        Text("Horas estimadas")
+                        Spacer()
+                        TextField("0", value: $estimatedHours, format: .number)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    HStack {
+                        Text("Horas já trabalhadas")
+                        Spacer()
+                        TextField("0", value: $workedHours, format: .number)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    Text("Use \"Horas já trabalhadas\" para registrar tempo feito antes de usar o timer.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .formStyle(.grouped)
@@ -51,7 +65,7 @@ struct TaskFormView: View {
                 }
             }
             .onAppear { loadTask() }
-            .frame(minWidth: 400, minHeight: 320)
+            .frame(minWidth: 400, minHeight: 380)
         }
     }
 
@@ -62,6 +76,16 @@ struct TaskFormView: View {
         priority = task.priority
         status = task.status
         estimatedHours = task.estimatedSeconds / 3600
+        let fromTimer = task.timeEntries.reduce(0) { $0 + $1.duration }
+        workedHours = task.manualWorkedSeconds / 3600
+        if workedHours == 0, fromTimer == 0, task.actualSeconds > 0 {
+            workedHours = task.actualSeconds / 3600
+        }
+    }
+
+    private func applyWorkedHours(to task: TaskItem) {
+        task.manualWorkedSeconds = max(0, workedHours * 3600)
+        task.refreshActualSeconds()
     }
 
     private func save() {
@@ -71,6 +95,7 @@ struct TaskFormView: View {
             task.priority = priority
             task.status = status
             task.estimatedSeconds = estimatedHours * 3600
+            applyWorkedHours(to: task)
             SyncIdentity.touch(&task.updatedAt)
             if status == .completed {
                 appState.activityLogger.log(
@@ -89,6 +114,7 @@ struct TaskFormView: View {
                 estimatedSeconds: estimatedHours * 3600,
                 project: project
             )
+            applyWorkedHours(to: newTask)
             context.insert(newTask)
             SyncIdentity.touch(&project.updatedAt)
             appState.activityLogger.log(

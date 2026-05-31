@@ -10,6 +10,7 @@ final class TaskItem {
     var priorityRaw: String
     var statusRaw: String
     var estimatedSeconds: TimeInterval
+    var manualWorkedSeconds: TimeInterval = 0
     var actualSeconds: TimeInterval
     var createdAt: Date
     var completedAt: Date?
@@ -34,6 +35,7 @@ final class TaskItem {
         self.priorityRaw = priority.rawValue
         self.statusRaw = status.rawValue
         self.estimatedSeconds = estimatedSeconds
+        self.manualWorkedSeconds = 0
         self.actualSeconds = 0
         self.createdAt = Date()
         self.completedAt = nil
@@ -57,6 +59,7 @@ final class TaskItem {
     }
 
     func refreshActualSeconds() {
-        actualSeconds = timeEntries.reduce(0) { $0 + $1.duration }
+        let fromTimer = timeEntries.reduce(0) { $0 + $1.duration }
+        actualSeconds = manualWorkedSeconds + fromTimer
     }
 }

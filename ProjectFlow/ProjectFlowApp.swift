@@ -5,23 +5,7 @@ import SwiftData
 struct ProjectFlowApp: App {
     @State private var appState = AppState()
 
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Project.self,
-            TaskItem.self,
-            TimeEntry.self,
-            PomodoroSession.self,
-            Tag.self,
-            ActivityLog.self,
-            Goal.self
-        ])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        do {
-            return try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    var sharedModelContainer: ModelContainer = ModelContainerFactory.makeShared()
 
     init() {
         NotificationService.shared.requestAuthorization()
