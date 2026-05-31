@@ -42,9 +42,16 @@ struct ProjectDetailView: View {
         }
         .confirmationDialog("Excluir projeto?", isPresented: $showingDeleteConfirm) {
             Button("Excluir", role: .destructive) {
+                _ = SyncIdentity.ensure(&project.syncId)
+                for task in project.tasks {
+                    _ = SyncIdentity.ensure(&task.syncId)
+                    appState.syncService.registerDeletion(syncId: task.syncId)
+                }
+                appState.syncService.registerDeletion(syncId: project.syncId)
                 context.delete(project)
                 try? context.save()
                 appState.selectedProject = nil
+                appState.notifyDataChanged()
             }
         } message: {
             Text("Esta ação não pode ser desfeita. Todas as tarefas e registros serão removidos.")

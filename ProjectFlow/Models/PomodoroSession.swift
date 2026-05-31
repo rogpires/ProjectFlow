@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class PomodoroSession {
+    var syncId: String = ""
+    var updatedAt: Date = Date()
     var startDate: Date
     var endDate: Date?
     var workMinutes: Int
@@ -21,6 +23,8 @@ final class PomodoroSession {
         project: Project? = nil,
         task: TaskItem? = nil
     ) {
+        self.syncId = UUID().uuidString
+        self.updatedAt = Date()
         self.startDate = Date()
         self.endDate = nil
         self.workMinutes = workMinutes

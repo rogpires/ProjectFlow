@@ -71,6 +71,7 @@ struct TaskFormView: View {
             task.priority = priority
             task.status = status
             task.estimatedSeconds = estimatedHours * 3600
+            SyncIdentity.touch(&task.updatedAt)
             if status == .completed {
                 appState.activityLogger.log(
                     action: .taskCompleted,
@@ -98,6 +99,7 @@ struct TaskFormView: View {
             )
         }
         try? context.save()
+        appState.notifyDataChanged()
         dismiss()
     }
 }

@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class Project {
+    var syncId: String = ""
+    var updatedAt: Date = Date()
     var name: String
     var projectDescription: String
     var categoryRaw: String
@@ -33,6 +35,8 @@ final class Project {
         hourlyRate: Double = 100,
         estimatedROI: Double = 0
     ) {
+        self.syncId = UUID().uuidString
+        self.updatedAt = Date()
         self.name = name
         self.projectDescription = projectDescription
         self.categoryRaw = category.rawValue

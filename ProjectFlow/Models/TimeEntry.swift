@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class TimeEntry {
+    var syncId: String = ""
+    var updatedAt: Date = Date()
     var startDate: Date
     var endDate: Date?
     var notes: String
@@ -20,6 +22,8 @@ final class TimeEntry {
         task: TaskItem? = nil,
         notes: String = ""
     ) {
+        self.syncId = UUID().uuidString
+        self.updatedAt = Date()
         self.startDate = startDate
         self.endDate = nil
         self.notes = notes

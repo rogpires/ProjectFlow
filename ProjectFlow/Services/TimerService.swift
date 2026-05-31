@@ -44,6 +44,14 @@ final class TimerService {
     func start(project: Project, task: TaskItem) {
         guard let context = appState?.modelContext else { return }
 
+        _ = SyncIdentity.ensure(&project.syncId)
+        _ = SyncIdentity.ensure(&task.syncId)
+        let check = appState?.syncService.canStartTimer(
+            projectSyncId: project.syncId,
+            taskSyncId: task.syncId
+        )
+        if let check, !check.allowed { return }
+
         if state != .idle {
             let sameTask = currentProject?.persistentModelID == project.persistentModelID
                 && currentTask?.persistentModelID == task.persistentModelID
@@ -75,6 +83,7 @@ final class TimerService {
             context: context
         )
         try? context.save()
+        appState?.notifyDataChanged()
     }
 
     func pause() {
@@ -89,6 +98,7 @@ final class TimerService {
             context: context
         )
         try? context.save()
+        appState?.notifyDataChanged()
     }
 
     func resume() {
@@ -106,6 +116,7 @@ final class TimerService {
             context: context
         )
         try? context.save()
+        appState?.notifyDataChanged()
     }
 
     func stop(save: Bool = true) {
@@ -118,6 +129,7 @@ final class TimerService {
 
         resetSession()
         try? context.save()
+        appState?.notifyDataChanged()
     }
 
     func switchProject(_ project: Project, task: TaskItem) {
@@ -135,6 +147,7 @@ final class TimerService {
         let entry = TimeEntry(startDate: sessionStartDate, project: project, task: task)
         entry.endDate = sessionStartDate.addingTimeInterval(elapsedSeconds)
         entry.isRunning = false
+        SyncIdentity.touch(&entry.updatedAt)
         context.insert(entry)
         task.refreshActualSeconds()
 

@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class ActivityLog {
+    var syncId: String = ""
+    var updatedAt: Date = Date()
     var timestamp: Date
     var actionRaw: String
     var details: String
@@ -18,6 +20,8 @@ final class ActivityLog {
         project: Project? = nil,
         task: TaskItem? = nil
     ) {
+        self.syncId = UUID().uuidString
+        self.updatedAt = Date()
         self.timestamp = Date()
         self.actionRaw = action.rawValue
         self.details = details

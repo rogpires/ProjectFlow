@@ -118,6 +118,7 @@ struct ProjectFormView: View {
             project.iconName = iconName
             project.hourlyRate = hourlyRate
             project.estimatedROI = estimatedROI
+            SyncIdentity.touch(&project.updatedAt)
         } else {
             let newProject = Project(
                 name: name,
@@ -138,6 +139,7 @@ struct ProjectFormView: View {
             )
         }
         try? context.save()
+        appState.notifyDataChanged()
         dismiss()
     }
 }

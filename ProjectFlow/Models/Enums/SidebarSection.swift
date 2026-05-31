@@ -11,6 +11,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case goals = "Metas"
     case metrics = "Métricas"
     case projectValue = "Valor do Projeto"
+    case sync = "Sincronização"
     case integrations = "Integrações"
 
     var id: String { rawValue }
@@ -27,6 +28,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .goals: "target"
         case .metrics: "chart.xyaxis.line"
         case .projectValue: "dollarsign.circle.fill"
+        case .sync: "icloud.fill"
         case .integrations: "link"
         }
     }

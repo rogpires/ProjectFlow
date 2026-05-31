@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class TaskItem {
+    var syncId: String = ""
+    var updatedAt: Date = Date()
     var name: String
     var taskDescription: String
     var priorityRaw: String
@@ -25,6 +27,8 @@ final class TaskItem {
         estimatedSeconds: TimeInterval = 0,
         project: Project? = nil
     ) {
+        self.syncId = UUID().uuidString
+        self.updatedAt = Date()
         self.name = name
         self.taskDescription = taskDescription
         self.priorityRaw = priority.rawValue

@@ -3,6 +3,8 @@ import SwiftData
 
 @Model
 final class Goal {
+    var syncId: String = ""
+    var updatedAt: Date = Date()
     var title: String
     var targetHours: Double
     var periodRaw: String
@@ -10,6 +12,8 @@ final class Goal {
     var isActive: Bool
 
     init(title: String, targetHours: Double, period: GoalPeriod, isActive: Bool = true) {
+        self.syncId = UUID().uuidString
+        self.updatedAt = Date()
         self.title = title
         self.targetHours = targetHours
         self.periodRaw = period.rawValue

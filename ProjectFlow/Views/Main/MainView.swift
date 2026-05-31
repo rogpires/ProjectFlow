@@ -27,6 +27,7 @@ struct MainView: View {
                     }
                 }
                 Section("Sistema") {
+                    sidebarRow(.sync)
                     sidebarRow(.integrations)
                 }
 
@@ -65,6 +66,10 @@ struct MainView: View {
         .onAppear {
             appState.modelContext = context
             TimeEntryCleanupService.cleanupDuplicates(in: context)
+            if appState.syncService.isConfigured {
+                appState.syncService.startPolling()
+                Task { await appState.syncService.syncNow() }
+            }
         }
     }
 
@@ -112,6 +117,8 @@ struct MainView: View {
             MetricsView()
         case .projectValue:
             ProjectValueView()
+        case .sync:
+            SyncSettingsView()
         case .integrations:
             IntegrationsView()
         }
