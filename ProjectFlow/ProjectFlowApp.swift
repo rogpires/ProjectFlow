@@ -35,6 +35,11 @@ struct ProjectFlowApp: App {
         .modelContainer(sharedModelContainer)
         .defaultSize(width: 1200, height: 800)
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("Sobre \(AppInfo.displayName)") {
+                    appState.selectedSection = .about
+                }
+            }
             CommandGroup(after: .newItem) {
                 Button("Novo Projeto") {
                     appState.selectedSection = .projects

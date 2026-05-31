@@ -90,6 +90,7 @@ struct TaskFormView: View {
                 project: project
             )
             context.insert(newTask)
+            SyncIdentity.touch(&project.updatedAt)
             appState.activityLogger.log(
                 action: .taskCreated,
                 details: name,
@@ -98,8 +99,10 @@ struct TaskFormView: View {
                 context: context
             )
         }
-        try? context.save()
-        appState.notifyDataChanged()
-        dismiss()
+        do {
+            try context.save()
+            appState.notifyDataChanged()
+            dismiss()
+        } catch {}
     }
 }

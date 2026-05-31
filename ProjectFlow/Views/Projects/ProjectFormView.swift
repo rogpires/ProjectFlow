@@ -137,9 +137,20 @@ struct ProjectFormView: View {
                 project: newProject,
                 context: context
             )
+            do {
+                try context.save()
+                appState.selectedProject = newProject
+                appState.notifyDataChanged()
+                dismiss()
+            } catch {
+                return
+            }
+            return
         }
-        try? context.save()
-        appState.notifyDataChanged()
-        dismiss()
+        do {
+            try context.save()
+            appState.notifyDataChanged()
+            dismiss()
+        } catch {}
     }
 }

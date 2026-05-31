@@ -47,18 +47,26 @@ struct ProjectsListView: View {
                     message: "Crie seu primeiro projeto para começar a rastrear tempo e custos."
                 )
             } else {
-                List(filteredProjects) { project in
-                    Button {
-                        appState.selectedProject = project
-                    } label: {
-                        ProjectRowView(project: project)
+                List {
+                    ForEach(filteredProjects, id: \.persistentModelID) { project in
+                        Button {
+                            appState.selectedProject = project
+                        } label: {
+                            ProjectRowView(project: project)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
+        .id(appState.listRefreshToken)
         .sheet(isPresented: $showingNewProject) {
             ProjectFormView()
+        }
+        .onChange(of: showingNewProject) { _, isShowing in
+            if !isShowing {
+                appState.listRefreshToken = UUID()
+            }
         }
         .navigationTitle("Projetos")
     }

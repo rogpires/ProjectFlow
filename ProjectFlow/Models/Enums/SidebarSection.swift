@@ -13,6 +13,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case projectValue = "Valor do Projeto"
     case sync = "Sincronização"
     case integrations = "Integrações"
+    case about = "Sobre"
 
     var id: String { rawValue }
 
@@ -30,6 +31,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .projectValue: "dollarsign.circle.fill"
         case .sync: "icloud.fill"
         case .integrations: "link"
+        case .about: "info.circle.fill"
         }
     }
 }

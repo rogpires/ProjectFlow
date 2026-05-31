@@ -29,6 +29,7 @@ struct MainView: View {
                 Section("Sistema") {
                     sidebarRow(.sync)
                     sidebarRow(.integrations)
+                    sidebarRow(.about)
                 }
 
                 if appState.timerService.isActive {
@@ -121,6 +122,8 @@ struct MainView: View {
             SyncSettingsView()
         case .integrations:
             IntegrationsView()
+        case .about:
+            AboutView()
         }
     }
 }

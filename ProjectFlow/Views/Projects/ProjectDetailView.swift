@@ -5,10 +5,17 @@ struct ProjectDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppState.self) private var appState
     @Bindable var project: Project
+    @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
 
     @State private var showingEdit = false
     @State private var showingNewTask = false
     @State private var showingDeleteConfirm = false
+
+    private var projectTasks: [TaskItem] {
+        TimeEntryQueryHelper.uniqueByID(
+            allTasks.filter { $0.project?.persistentModelID == project.persistentModelID }
+        ).sorted { $0.priority.sortOrder < $1.priority.sortOrder }
+    }
 
     var body: some View {
         ScrollView {
@@ -39,6 +46,11 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: $showingNewTask) {
             TaskFormView(project: project)
+        }
+        .onChange(of: showingNewTask) { _, isShowing in
+            if !isShowing {
+                appState.listRefreshToken = UUID()
+            }
         }
         .confirmationDialog("Excluir projeto?", isPresented: $showingDeleteConfirm) {
             Button("Excluir", role: .destructive) {
@@ -116,7 +128,7 @@ struct ProjectDetailView: View {
                 showingNewTask = true
             }
 
-            if project.tasks.isEmpty {
+            if projectTasks.isEmpty {
                 EmptyStateView(
                     icon: "checklist",
                     title: "Sem tarefas",
@@ -124,11 +136,12 @@ struct ProjectDetailView: View {
                 )
                 .frame(height: 200)
             } else {
-                ForEach(TimeEntryQueryHelper.uniqueByID(project.tasks).sorted(by: { $0.priority.sortOrder < $1.priority.sortOrder })) { task in
+                ForEach(projectTasks, id: \.persistentModelID) { task in
                     TaskRowView(task: task, project: project)
                 }
             }
         }
+        .id(appState.listRefreshToken)
     }
 }
 
@@ -197,6 +210,11 @@ struct TaskRowView: View {
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
         .sheet(isPresented: $showingEdit) {
             TaskFormView(project: project, task: task)
+        }
+        .onChange(of: showingEdit) { _, isShowing in
+            if !isShowing {
+                appState.listRefreshToken = UUID()
+            }
         }
     }
 }

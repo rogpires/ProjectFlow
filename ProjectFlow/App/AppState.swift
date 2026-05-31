@@ -9,6 +9,7 @@ final class AppState {
     var selectedProject: Project?
     var searchText: String = ""
     var modelContext: ModelContext?
+    var listRefreshToken = UUID()
 
     let timerService: TimerService
     let pomodoroService = PomodoroService()
@@ -25,6 +26,7 @@ final class AppState {
     }
 
     func notifyDataChanged() {
+        listRefreshToken = UUID()
         syncService.requestSync()
     }
 }
