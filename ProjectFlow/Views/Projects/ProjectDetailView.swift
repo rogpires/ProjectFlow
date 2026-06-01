@@ -7,9 +7,11 @@
 
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct ProjectDetailView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(AppState.self) private var appState
     @Bindable var project: Project
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
@@ -18,6 +20,12 @@ struct ProjectDetailView: View {
     @State private var showingNewTask = false
     @State private var showingDeleteConfirm = false
     @State private var taskSortOption: TaskSortOption = .priority
+    @State private var contributionActivity: GitContributionActivity?
+    @State private var isLoadingGit = false
+    @State private var resolvedGitRoot: String?
+    @State private var gitErrorMessage: String?
+    @State private var gitParsedCommitLines = 0
+    @State private var gitKrakenError: String?
 
     private var projectTasks: [TaskItem] {
         let tasks = TimeEntryQueryHelper.uniqueByID(
@@ -30,6 +38,9 @@ struct ProjectDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
+                if project.hasGitRepository {
+                    gitSection
+                }
                 financialSummary
                 tasksSection
             }
@@ -52,6 +63,11 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: $showingEdit) {
             ProjectFormView(project: project)
+        }
+        .onChange(of: showingEdit) { _, isShowing in
+            if !isShowing {
+                refreshGitInfo()
+            }
         }
         .sheet(isPresented: $showingNewTask) {
             TaskFormView(project: project)
@@ -76,6 +92,144 @@ struct ProjectDetailView: View {
             }
         } message: {
             Text("Esta ação não pode ser desfeita. Todas as tarefas e registros serão removidos.")
+        }
+        .onAppear { refreshGitInfo() }
+        .onChange(of: project.gitRepositoryPath) { _, _ in refreshGitInfo() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, project.hasGitRepository {
+                refreshGitInfo()
+            }
+        }
+        .alert("GitKraken", isPresented: .init(
+            get: { gitKrakenError != nil },
+            set: { if !$0 { gitKrakenError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gitKrakenError ?? "")
+        }
+    }
+
+    private var gitSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("Git", systemImage: "arrow.triangle.branch")
+                    .font(.title3.weight(.semibold))
+                Spacer()
+                Button {
+                    refreshGitInfo()
+                } label: {
+                    Label("Atualizar", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
+                .disabled(isLoadingGit)
+                if GitKrakenSettings.isEnabled {
+                    Button {
+                        openInGitKraken()
+                    } label: {
+                        Label("Abrir no GitKraken", systemImage: "arrow.up.forward.app")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!GitKrakenService.isInstalled)
+                }
+            }
+
+            if let gitErrorMessage {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(gitErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            if !project.gitRepositoryPath.isEmpty {
+                Text(resolvedGitRoot ?? project.gitRepositoryPath)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .lineLimit(2)
+            }
+
+            if let activity = contributionActivity, !activity.weeks.isEmpty {
+                GitContributionHeatmapView(
+                    activity: activity,
+                    accentColor: Color(hex: project.colorHex)
+                )
+                if isLoadingGit {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            } else if isLoadingGit {
+                ProgressView("Carregando atividade Git…")
+                    .controlSize(.small)
+            } else if contributionActivity != nil {
+                if gitParsedCommitLines > 0 {
+                    Text("O Git tem \(gitParsedCommitLines) commits, mas nenhum no último ano neste repositório.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Nenhum commit encontrado. Edite o projeto, escolha a pasta do repositório com **Escolher…** e toque em **Atualizar**.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ProgressView("Carregando atividade Git…")
+                    .controlSize(.small)
+            }
+        }
+        .padding(16)
+        .background(.background.secondary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func refreshGitInfo() {
+        guard project.hasGitRepository else {
+            contributionActivity = nil
+            resolvedGitRoot = nil
+            gitErrorMessage = nil
+            gitParsedCommitLines = 0
+            isLoadingGit = false
+            return
+        }
+        let path = project.gitRepositoryPath
+        let syncId = project.syncId
+        _ = SyncIdentity.ensure(&project.syncId)
+        isLoadingGit = true
+        gitErrorMessage = nil
+
+        Task {
+            let result = await GitRepositoryHelper.loadRepository(
+                storedPath: path,
+                projectSyncId: syncId
+            )
+
+            await MainActor.run {
+                resolvedGitRoot = result.root
+                gitErrorMessage = result.errorMessage
+                gitParsedCommitLines = result.parsedCommitLines
+                contributionActivity = GitContributionActivity(countsByDay: result.counts)
+                isLoadingGit = false
+            }
+        }
+    }
+
+    private func openInGitKraken() {
+        let path = project.gitRepositoryPath
+        let syncId = project.syncId
+        Task {
+            do {
+                _ = SyncIdentity.ensure(&project.syncId)
+                try await GitKrakenService.openRepository(at: path, projectSyncId: syncId)
+            } catch {
+                await MainActor.run {
+                    gitKrakenError = error.localizedDescription
+                }
+            }
         }
     }
 

@@ -281,6 +281,7 @@ final class iCloudDriveSyncService {
         project.iconName = dto.iconName
         project.hourlyRate = dto.hourlyRate
         project.estimatedROI = dto.estimatedROI
+        project.gitRepositoryPath = dto.gitRepositoryPath ?? project.gitRepositoryPath
         return project
     }
 
@@ -488,6 +489,7 @@ final class iCloudDriveSyncService {
             iconName: project.iconName,
             hourlyRate: project.hourlyRate,
             estimatedROI: project.estimatedROI,
+            gitRepositoryPath: project.gitRepositoryPath.isEmpty ? nil : project.gitRepositoryPath,
             tagSyncIds: project.tags.map { tag in
                 SyncIdentity.ensure(&tag.syncId)
                 return tag.syncId

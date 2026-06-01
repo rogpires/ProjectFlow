@@ -153,7 +153,9 @@ struct MainView: View {
         case .sync:
             SyncSettingsView()
         case .integrations:
-            IntegrationsView()
+            NavigationStack {
+                IntegrationsView()
+            }
         case .about:
             AboutView()
         }

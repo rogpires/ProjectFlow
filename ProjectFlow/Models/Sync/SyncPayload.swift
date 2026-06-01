@@ -43,6 +43,7 @@ struct ProjectDTO: Codable {
     var iconName: String
     var hourlyRate: Double
     var estimatedROI: Double
+    var gitRepositoryPath: String?
     var tagSyncIds: [String]
 }
 

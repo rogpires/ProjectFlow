@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import AppKit
 
 struct ProjectFormView: View {
     @Environment(\.modelContext) private var context
@@ -23,6 +24,10 @@ struct ProjectFormView: View {
     @State private var iconName = "folder.fill"
     @State private var hourlyRate = 100.0
     @State private var estimatedROI = 0.0
+    @State private var gitRepositoryPath = ""
+    @State private var pendingRepositoryURL: URL?
+    @State private var gitRepoIsValid: Bool?
+    @State private var gitResolvedRoot: String?
 
     var body: some View {
         NavigationStack {
@@ -86,19 +91,61 @@ struct ProjectFormView: View {
                             .frame(width: 120)
                     }
                 }
+
+                if GitKrakenSettings.isEnabled {
+                    Section("GitKraken") {
+                        HStack {
+                            TextField("Caminho do repositório", text: $gitRepositoryPath)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Escolher…") {
+                                pickRepositoryFolder()
+                            }
+                        }
+                        if !gitRepositoryPath.isEmpty {
+                            if let gitRepoIsValid {
+                                if gitRepoIsValid {
+                                    Label("Repositório Git válido", systemImage: "checkmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.green)
+                                    if let gitResolvedRoot {
+                                        Text(gitResolvedRoot)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(2)
+                                    }
+                                } else {
+                                    Label("Pasta sem repositório Git — escolha a raiz do projeto (.git)", systemImage: "exclamationmark.triangle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                            } else {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                        }
+                    }
+                }
             }
             .formStyle(.grouped)
+            .onChange(of: gitRepositoryPath) { _, newValue in
+                validateGitRepository(path: newValue)
+            }
             .navigationTitle(project == nil ? "Novo Projeto" : "Editar Projeto")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Salvar") { save() }
+                    Button("Salvar") {
+                        Task { await save() }
+                    }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .onAppear { loadProject() }
+            .onAppear {
+                loadProject()
+                validateGitRepository(path: gitRepositoryPath)
+            }
             .frame(minWidth: 480, minHeight: 520)
         }
     }
@@ -113,9 +160,82 @@ struct ProjectFormView: View {
         iconName = project.iconName
         hourlyRate = project.hourlyRate
         estimatedROI = project.estimatedROI
+        gitRepositoryPath = project.gitRepositoryPath
     }
 
-    private func save() {
+    private func pickRepositoryFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Selecione a pasta do repositório Git"
+        panel.prompt = "Selecionar"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        pendingRepositoryURL = url
+        gitRepositoryPath = GitCommandRunner.repositoryRoot(at: url.path) ?? url.path
+        if let project {
+            _ = SyncIdentity.ensure(&project.syncId)
+            GitRepositorySession.saveAccess(for: url, projectSyncId: project.syncId)
+        }
+        validateGitRepository(path: gitRepositoryPath)
+    }
+
+    private func validateGitRepository(path: String) {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            gitRepoIsValid = nil
+            gitResolvedRoot = nil
+            return
+        }
+        gitRepoIsValid = nil
+        let syncId = project?.syncId
+        Task {
+            if let syncId, !syncId.isEmpty {
+                let result = await GitRepositoryHelper.loadRepository(
+                    storedPath: trimmed,
+                    projectSyncId: syncId
+                )
+                await MainActor.run {
+                    gitRepoIsValid = result.root != nil && result.errorMessage == nil
+                    gitResolvedRoot = result.root
+                }
+            } else {
+                let root = GitCommandRunner.repositoryRoot(at: trimmed)
+                await MainActor.run {
+                    gitRepoIsValid = root != nil
+                    gitResolvedRoot = root
+                }
+            }
+        }
+    }
+
+    private func applyGitRepository(to project: Project) async {
+        let trimmed = gitRepositoryPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            project.gitRepositoryPath = ""
+            if !project.syncId.isEmpty {
+                RepositoryBookmarkStore.clear(projectSyncId: project.syncId)
+            }
+            return
+        }
+        _ = SyncIdentity.ensure(&project.syncId)
+        let result = await GitRepositoryHelper.loadRepository(
+            storedPath: trimmed,
+            projectSyncId: project.syncId
+        )
+        project.gitRepositoryPath = result.root ?? trimmed
+        if let url = pendingRepositoryURL {
+            GitRepositorySession.saveAccess(for: url, projectSyncId: project.syncId)
+        } else if let root = result.root {
+            GitRepositorySession.saveAccess(
+                for: URL(fileURLWithPath: root, isDirectory: true),
+                projectSyncId: project.syncId
+            )
+        }
+    }
+
+    private func save() async {
         if let project {
             project.name = name
             project.projectDescription = description
@@ -125,6 +245,7 @@ struct ProjectFormView: View {
             project.iconName = iconName
             project.hourlyRate = hourlyRate
             project.estimatedROI = estimatedROI
+            await applyGitRepository(to: project)
             SyncIdentity.touch(&project.updatedAt)
         } else {
             let newProject = Project(
@@ -138,6 +259,11 @@ struct ProjectFormView: View {
                 estimatedROI: estimatedROI
             )
             context.insert(newProject)
+            _ = SyncIdentity.ensure(&newProject.syncId)
+            await applyGitRepository(to: newProject)
+            if let url = pendingRepositoryURL {
+                GitRepositorySession.saveAccess(for: url, projectSyncId: newProject.syncId)
+            }
             appState.activityLogger.log(
                 action: .projectCreated,
                 details: name,

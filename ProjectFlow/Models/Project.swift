@@ -22,6 +22,7 @@ final class Project {
     var iconName: String
     var hourlyRate: Double
     var estimatedROI: Double
+    var gitRepositoryPath: String = ""
 
     @Relationship(deleteRule: .cascade, inverse: \TaskItem.project)
     var tasks: [TaskItem]
@@ -54,6 +55,7 @@ final class Project {
         self.iconName = iconName
         self.hourlyRate = hourlyRate
         self.estimatedROI = estimatedROI
+        self.gitRepositoryPath = ""
         self.tasks = []
         self.timeEntries = []
         self.tags = []
@@ -92,5 +94,9 @@ final class Project {
 
     var accumulatedValue: Double {
         investedValue
+    }
+
+    var hasGitRepository: Bool {
+        !gitRepositoryPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

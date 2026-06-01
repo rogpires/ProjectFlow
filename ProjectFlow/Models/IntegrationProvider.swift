@@ -48,9 +48,9 @@ enum IntegrationRegistry {
             id: "gitkraken",
             name: "GitKraken",
             icon: "arrow.triangle.branch",
-            description: "Integração com fluxo Git visual.",
+            description: "Vincule repositórios Git e abra no GitKraken Desktop.",
             isConnected: false,
-            isAvailable: false
+            isAvailable: true
         ),
         IntegrationDescriptor(
             id: "pocketbase",
