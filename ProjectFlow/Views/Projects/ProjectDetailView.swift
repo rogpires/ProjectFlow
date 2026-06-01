@@ -18,6 +18,7 @@ struct ProjectDetailView: View {
 
     @State private var showingEdit = false
     @State private var showingNewTask = false
+    @State private var taskEditContext: TaskEditSheetContext?
     @State private var showingDeleteConfirm = false
     @State private var taskSortOption: TaskSortOption = .priority
     @State private var contributionActivity: GitContributionActivity?
@@ -72,10 +73,8 @@ struct ProjectDetailView: View {
         .sheet(isPresented: $showingNewTask) {
             TaskFormView(project: project)
         }
-        .onChange(of: showingNewTask) { _, isShowing in
-            if !isShowing {
-                appState.listRefreshToken = UUID()
-            }
+        .sheet(item: $taskEditContext) { context in
+            TaskFormView(project: context.project, task: context.task)
         }
         .confirmationDialog("Excluir projeto?", isPresented: $showingDeleteConfirm) {
             Button("Excluir", role: .destructive) {
@@ -316,21 +315,20 @@ struct ProjectDetailView: View {
                 .frame(height: 200)
             } else {
                 ForEach(projectTasks, id: \.persistentModelID) { task in
-                    TaskRowView(task: task, project: project)
+                    TaskRowView(task: task, project: project) {
+                        taskEditContext = TaskEditSheetContext(project: project, task: task)
+                    }
                 }
             }
         }
-        .id(appState.listRefreshToken)
     }
 }
 
 struct TaskRowView: View {
-    @Environment(\.modelContext) private var context
     @Environment(AppState.self) private var appState
     @Bindable var task: TaskItem
     let project: Project
-
-    @State private var showingEdit = false
+    var onEdit: () -> Void
 
     private var isTrackingSameTask: Bool {
         let timer = appState.timerService
@@ -378,22 +376,12 @@ struct TaskRowView: View {
             .help(isTrackingSameTask ? "Timer em andamento" : "Iniciar timer")
             .disabled(isTrackingSameTask)
 
-            Button {
-                showingEdit = true
-            } label: {
+            Button(action: onEdit) {
                 Image(systemName: "pencil")
             }
             .buttonStyle(.borderless)
         }
         .padding(12)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
-        .sheet(isPresented: $showingEdit) {
-            TaskFormView(project: project, task: task)
-        }
-        .onChange(of: showingEdit) { _, isShowing in
-            if !isShowing {
-                appState.listRefreshToken = UUID()
-            }
-        }
     }
 }

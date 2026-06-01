@@ -42,6 +42,7 @@ struct AllTasksListView: View {
 
     @State private var statusFilter: AllTasksStatusFilter = .pending
     @State private var sortOption: TaskSortOption = .priority
+    @State private var taskEditContext: TaskEditSheetContext?
 
     private var filteredTasks: [TaskItem] {
         let unique = TimeEntryQueryHelper.uniqueByID(allTasks)
@@ -93,7 +94,12 @@ struct AllTasksListView: View {
                     ForEach(groupedByProject, id: \.project.persistentModelID) { group in
                         Section {
                             ForEach(group.tasks, id: \.persistentModelID) { task in
-                                TaskRowView(task: task, project: group.project)
+                                TaskRowView(task: task, project: group.project) {
+                                    taskEditContext = TaskEditSheetContext(
+                                        project: group.project,
+                                        task: task
+                                    )
+                                }
                             }
                         } header: {
                             ProjectSectionHeader(project: group.project, taskCount: group.tasks.count) {
@@ -112,7 +118,9 @@ struct AllTasksListView: View {
                 }
             }
         }
-        .id(appState.listRefreshToken)
+        .sheet(item: $taskEditContext) { context in
+            TaskFormView(project: context.project, task: context.task)
+        }
         .navigationTitle("Tarefas")
     }
 

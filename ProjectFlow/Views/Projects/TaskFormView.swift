@@ -8,6 +8,19 @@
 import SwiftUI
 import SwiftData
 
+/// Contexto estável para apresentar o sheet de edição no nível da lista (evita fechar sozinho).
+struct TaskEditSheetContext: Identifiable {
+    let id: PersistentIdentifier
+    let project: Project
+    let task: TaskItem
+
+    init(project: Project, task: TaskItem) {
+        self.id = task.persistentModelID
+        self.project = project
+        self.task = task
+    }
+}
+
 struct TaskFormView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
