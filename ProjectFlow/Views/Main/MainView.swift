@@ -20,7 +20,7 @@ struct MainView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: $state.selectedSection) {
                 Section("Principal") {
-                    ForEach([SidebarSection.dashboard, .projects, .timer, .pomodoro]) { section in
+                    ForEach([SidebarSection.dashboard, .projects, .tasks, .timer, .pomodoro]) { section in
                         sidebarRow(section)
                     }
                 }
@@ -71,7 +71,7 @@ struct MainView: View {
             detailView
                 .frame(minWidth: 600, minHeight: 500)
         }
-        .searchable(text: $state.searchText, prompt: "Buscar projetos...")
+        .searchable(text: $state.searchText, prompt: searchPrompt)
         .onAppear {
             appState.modelContext = context
             TimeEntryCleanupService.cleanupDuplicates(in: context)
@@ -88,6 +88,17 @@ struct MainView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("O banco local foi recriado após uma atualização. Se você usa sincronização iCloud, os dados devem ser restaurados automaticamente.")
+        }
+    }
+
+    private var searchPrompt: String {
+        switch appState.selectedSection {
+        case .projects:
+            "Buscar projetos..."
+        case .tasks:
+            "Buscar tarefas e projetos..."
+        default:
+            "Buscar..."
         }
     }
 
@@ -118,6 +129,10 @@ struct MainView: View {
                 } else {
                     ProjectsListView()
                 }
+            }
+        case .tasks:
+            NavigationStack {
+                AllTasksListView()
             }
         case .timer:
             TimerView()

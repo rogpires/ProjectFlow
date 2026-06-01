@@ -10,6 +10,7 @@ import Foundation
 enum SidebarSection: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
     case projects = "Projetos"
+    case tasks = "Tarefas"
     case timer = "Timer"
     case pomodoro = "Pomodoro"
     case reports = "Relatórios"
@@ -28,6 +29,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard: "chart.bar.fill"
         case .projects: "folder.fill"
+        case .tasks: "checklist"
         case .timer: "timer"
         case .pomodoro: "clock.badge.checkmark"
         case .reports: "doc.text.fill"
