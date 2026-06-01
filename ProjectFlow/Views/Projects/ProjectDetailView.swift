@@ -205,7 +205,7 @@ struct TaskRowView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(AppFormatters.formatHours(task.actualSeconds))
+                Text(AppFormatters.formatHours(task.totalWorkedSeconds))
                     .font(.subheadline.monospacedDigit())
                 if task.estimatedSeconds > 0 {
                     Text("de \(AppFormatters.formatHours(task.estimatedSeconds))")

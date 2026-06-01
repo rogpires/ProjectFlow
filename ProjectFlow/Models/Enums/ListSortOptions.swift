@@ -76,7 +76,7 @@ enum TaskSortOption: String, CaseIterable, Identifiable {
         case .startDateOldest:
             tasks.sorted { $0.createdAt < $1.createdAt }
         case .hoursWorked:
-            tasks.sorted { $0.actualSeconds > $1.actualSeconds }
+            tasks.sorted { $0.totalWorkedSeconds > $1.totalWorkedSeconds }
         case .status:
             tasks.sorted { $0.statusRaw.localizedCompare($1.statusRaw) == .orderedAscending }
         }

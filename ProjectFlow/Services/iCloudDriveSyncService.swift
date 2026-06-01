@@ -111,6 +111,7 @@ final class iCloudDriveSyncService {
             }
             try pushLocalChanges(context: context)
             status = .synced(Date())
+            appState?.notifyDataChanged()
         } catch {
             status = .error(error.localizedDescription)
         }
@@ -311,9 +312,9 @@ final class iCloudDriveSyncService {
         task.statusRaw = dto.statusRaw
         task.estimatedSeconds = dto.estimatedSeconds
         task.manualWorkedSeconds = dto.manualWorkedSeconds ?? task.manualWorkedSeconds
-        task.actualSeconds = dto.actualSeconds
         task.createdAt = dto.createdAt
         task.completedAt = dto.completedAt
+        task.refreshActualSeconds()
         return task
     }
 

@@ -140,6 +140,7 @@ enum MetricsService {
     }
 
     static func goalProgress(goal: Goal, entries: [TimeEntry]) -> (current: TimeInterval, target: TimeInterval, progress: Double) {
+        let entries = TimeEntryQueryHelper.displayEntries(entries)
         let now = Date()
         let start: Date
         switch goal.period {

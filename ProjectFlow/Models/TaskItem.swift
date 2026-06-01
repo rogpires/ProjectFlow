@@ -66,7 +66,11 @@ final class TaskItem {
     }
 
     func refreshActualSeconds() {
-        let fromTimer = timeEntries.reduce(0) { $0 + $1.duration }
-        actualSeconds = manualWorkedSeconds + fromTimer
+        actualSeconds = totalWorkedSeconds
+    }
+
+    /// Tempo total da tarefa: horas manuais + registros do timer.
+    var totalWorkedSeconds: TimeInterval {
+        manualWorkedSeconds + timeEntries.reduce(0) { $0 + $1.duration }
     }
 }

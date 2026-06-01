@@ -75,7 +75,11 @@ final class Project {
     }
 
     var totalSeconds: TimeInterval {
-        timeEntries.reduce(0) { $0 + $1.duration }
+        let fromTasks = tasks.reduce(0) { $0 + $1.totalWorkedSeconds }
+        let orphanEntries = timeEntries
+            .filter { $0.task == nil }
+            .reduce(0) { $0 + $1.duration }
+        return fromTasks + orphanEntries
     }
 
     var investedValue: Double {

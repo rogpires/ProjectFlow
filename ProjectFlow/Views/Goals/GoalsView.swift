@@ -10,9 +10,12 @@ import SwiftData
 
 struct GoalsView: View {
     @Environment(\.modelContext) private var context
+    @Environment(AppState.self) private var appState
     @Query(sort: \Goal.createdAt, order: .reverse) private var goals: [Goal]
     @Query private var entries: [TimeEntry]
     @State private var showingNewGoal = false
+
+    private static let defaultGoalsSeededKey = "ProjectFlow.defaultGoalsSeeded"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -36,31 +39,47 @@ struct GoalsView: View {
                 )
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                    ForEach(goals) { goal in
+                    ForEach(goals, id: \.persistentModelID) { goal in
                         GoalCardView(goal: goal, entries: entries)
                     }
                 }
             }
         }
         .padding(24)
+        .id(appState.listRefreshToken)
         .navigationTitle("Metas")
         .sheet(isPresented: $showingNewGoal) {
             GoalFormView()
+        }
+        .onChange(of: showingNewGoal) { _, isShowing in
+            if !isShowing {
+                appState.listRefreshToken = UUID()
+            }
         }
         .onAppear { seedDefaultGoalsIfNeeded() }
     }
 
     private func seedDefaultGoalsIfNeeded() {
-        guard goals.isEmpty else { return }
+        if UserDefaults.standard.bool(forKey: Self.defaultGoalsSeededKey) { return }
+
+        let existing = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
+        guard existing.isEmpty else {
+            UserDefaults.standard.set(true, forKey: Self.defaultGoalsSeededKey)
+            return
+        }
+
         context.insert(Goal(title: "4 horas por dia", targetHours: 4, period: .daily))
         context.insert(Goal(title: "20 horas por semana", targetHours: 20, period: .weekly))
         context.insert(Goal(title: "100 horas por mês", targetHours: 100, period: .monthly))
         try? context.save()
+        UserDefaults.standard.set(true, forKey: Self.defaultGoalsSeededKey)
+        appState.notifyDataChanged()
     }
 }
 
 struct GoalCardView: View {
     @Environment(\.modelContext) private var context
+    @Environment(AppState.self) private var appState
     let goal: Goal
     let entries: [TimeEntry]
 
@@ -75,7 +94,15 @@ struct GoalCardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Toggle("", isOn: Bindable(goal).isActive)
+                Toggle("", isOn: Binding(
+                    get: { goal.isActive },
+                    set: { newValue in
+                        goal.isActive = newValue
+                        SyncIdentity.touch(&goal.updatedAt)
+                        try? context.save()
+                        appState.notifyDataChanged()
+                    }
+                ))
                     .labelsHidden()
             }
 
@@ -97,8 +124,11 @@ struct GoalCardView: View {
                 .foregroundStyle(.secondary)
 
             Button(role: .destructive) {
+                _ = SyncIdentity.ensure(&goal.syncId)
+                appState.syncService.registerDeletion(syncId: goal.syncId)
                 context.delete(goal)
                 try? context.save()
+                appState.notifyDataChanged()
             } label: {
                 Text("Remover")
                     .font(.caption)
@@ -107,12 +137,14 @@ struct GoalCardView: View {
         }
         .padding(20)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .id("\(goal.persistentModelID)-\(appState.listRefreshToken)")
     }
 }
 
 struct GoalFormView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var appState
 
     @State private var title = ""
     @State private var targetHours = 4.0
@@ -121,20 +153,29 @@ struct GoalFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Título", text: $title)
-                Picker("Período", selection: $period) {
-                    ForEach(GoalPeriod.allCases) { p in
-                        Text(p.rawValue).tag(p)
+                Section("Informações") {
+                    TextField("Título", text: $title)
+                    Picker("Período", selection: $period) {
+                        ForEach(GoalPeriod.allCases) { p in
+                            Label(p.rawValue, systemImage: p.icon).tag(p)
+                        }
                     }
                 }
-                HStack {
-                    Text("Horas alvo")
-                    Spacer()
-                    TextField("4", value: $targetHours, format: .number)
-                        .frame(width: 80)
-                        .multilineTextAlignment(.trailing)
+
+                Section("Meta") {
+                    HStack {
+                        Text("Horas alvo")
+                        Spacer()
+                        TextField("4", value: $targetHours, format: .number)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    Text("Ex.: 4 para 4 horas por dia, 20 para 20 horas por semana.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Nova Meta")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -142,14 +183,17 @@ struct GoalFormView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Salvar") {
-                        context.insert(Goal(title: title, targetHours: targetHours, period: period))
+                        let goal = Goal(title: title, targetHours: targetHours, period: period)
+                        SyncIdentity.touch(&goal.updatedAt)
+                        context.insert(goal)
                         try? context.save()
+                        appState.notifyDataChanged()
                         dismiss()
                     }
-                    .disabled(title.isEmpty)
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .frame(minWidth: 360, minHeight: 240)
+            .frame(minWidth: 420, minHeight: 320)
         }
     }
 }
