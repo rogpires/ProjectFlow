@@ -13,26 +13,43 @@ struct ProjectsListView: View {
     @Environment(AppState.self) private var appState
     @Query(sort: \Project.createdAt, order: .reverse) private var projects: [Project]
     @State private var showingNewProject = false
-    @State private var filterStatus: ProjectStatus?
+    @State private var listFilter: ProjectListFilter = .all
     @State private var sortOption: ProjectSortOption = .startDateNewest
 
-    private var filteredProjects: [Project] {
+    private var matchingProjects: [Project] {
         let filtered = projects.filter { project in
             let matchesSearch = appState.searchText.isEmpty ||
                 project.name.localizedCaseInsensitiveContains(appState.searchText)
-            let matchesStatus = filterStatus == nil || project.status == filterStatus
-            return matchesSearch && matchesStatus
+            let matchesFilter = listFilter.includes(project.status)
+            return matchesSearch && matchesFilter
         }
         return sortOption.sort(filtered)
+    }
+
+    private var listSections: [(filter: ProjectListFilter, projects: [Project])] {
+        switch listFilter {
+        case .all:
+            return [
+                (.active, projects(in: matchingProjects, filter: .active)),
+                (.paused, projects(in: matchingProjects, filter: .paused)),
+                (.completed, projects(in: matchingProjects, filter: .completed))
+            ].filter { !$0.projects.isEmpty }
+        default:
+            guard !matchingProjects.isEmpty else { return [] }
+            return [(listFilter, matchingProjects)]
+        }
+    }
+
+    private func projects(in list: [Project], filter: ProjectListFilter) -> [Project] {
+        list.filter { filter.includes($0.status) }
     }
 
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
-                Picker("Status", selection: $filterStatus) {
-                    Text("Todos").tag(nil as ProjectStatus?)
-                    ForEach(ProjectStatus.allCases) { status in
-                        Text(status.rawValue).tag(status as ProjectStatus?)
+                Picker("Status", selection: $listFilter) {
+                    ForEach(ProjectListFilter.allCases) { filter in
+                        Text(filter.rawValue).tag(filter)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -58,21 +75,30 @@ struct ProjectsListView: View {
             }
             .padding()
 
-            if filteredProjects.isEmpty {
+            if listSections.isEmpty {
                 EmptyStateView(
                     icon: "folder.badge.plus",
                     title: "Nenhum projeto",
-                    message: "Crie seu primeiro projeto para começar a rastrear tempo e custos."
+                    message: emptyMessage
                 )
             } else {
                 List {
-                    ForEach(filteredProjects, id: \.persistentModelID) { project in
-                        Button {
-                            appState.selectedProject = project
-                        } label: {
-                            ProjectRowView(project: project)
+                    ForEach(listSections, id: \.filter.id) { section in
+                        Section {
+                            ForEach(section.projects, id: \.persistentModelID) { project in
+                                Button {
+                                    appState.selectedProject = project
+                                } label: {
+                                    ProjectRowView(project: project)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        } header: {
+                            ProjectListSectionHeader(
+                                filter: section.filter,
+                                count: section.projects.count
+                            )
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -87,6 +113,33 @@ struct ProjectsListView: View {
             }
         }
         .navigationTitle("Projetos")
+    }
+
+    private var emptyMessage: String {
+        switch listFilter {
+        case .all:
+            return "Crie seu primeiro projeto para começar a rastrear tempo e custos."
+        case .active:
+            return "Não há projetos em planejamento ou em andamento."
+        case .paused:
+            return "Não há projetos pausados."
+        case .completed:
+            return "Não há projetos finalizados."
+        }
+    }
+}
+
+private struct ProjectListSectionHeader: View {
+    let filter: ProjectListFilter
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Label(filter.sectionTitle, systemImage: filter.sectionIcon)
+            Text("(\(count))")
+                .foregroundStyle(.secondary)
+        }
+        .font(.subheadline.weight(.semibold))
     }
 }
 

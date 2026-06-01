@@ -11,6 +11,8 @@ struct GitContributionHeatmapView: View {
     let activity: GitContributionActivity
     var accentColor: Color = .green
 
+    @State private var hoveredDayID: Date?
+
     private let cellSize: CGFloat = 11
     private let cellSpacing: CGFloat = 3
     private let weekdayLabels = ["", "Seg", "", "Qua", "", "Sex", ""]
@@ -24,7 +26,9 @@ struct GitContributionHeatmapView: View {
 
             HStack(alignment: .top, spacing: 8) {
                 weekdayColumn
+                    .padding(.top, 22)
                 weeksGrid
+                    .padding(.top, 22)
             }
 
             legend
@@ -85,12 +89,46 @@ struct GitContributionHeatmapView: View {
             RoundedRectangle(cornerRadius: 2)
                 .fill(color(for: day.commitCount))
                 .frame(width: cellSize, height: cellSize)
+                .contentShape(Rectangle())
+                .onHover { isHovered in
+                    if isHovered {
+                        hoveredDayID = day.id
+                    } else if hoveredDayID == day.id {
+                        hoveredDayID = nil
+                    }
+                }
+                .overlay(alignment: .top) {
+                    if hoveredDayID == day.id {
+                        dayTooltip(for: day)
+                            .fixedSize()
+                            .offset(y: -30)
+                            .zIndex(100)
+                    }
+                }
                 .help(helpText(for: day))
         } else {
             RoundedRectangle(cornerRadius: 2)
                 .fill(Color.clear)
                 .frame(width: cellSize, height: cellSize)
         }
+    }
+
+    private func dayTooltip(for day: GitContributionDay) -> some View {
+        Text(helpText(for: day))
+            .font(.caption)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.background)
+                    .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(.quaternary, lineWidth: 1)
+            }
+            .allowsHitTesting(false)
     }
 
     private var legend: some View {
@@ -142,8 +180,14 @@ struct GitContributionHeatmapView: View {
 
     private func helpText(for day: GitContributionDay) -> String {
         let count = day.commitCount
-        let commits = count == 1 ? "1 commit" : "\(count) commits"
-        return "\(commits) em \(AppFormatters.shortDate.string(from: day.date))"
+        let commits: String
+        switch count {
+        case 0: commits = "Nenhum commit"
+        case 1: commits = "1 commit"
+        default: commits = "\(count) commits"
+        }
+        let date = AppFormatters.shortDate.string(from: day.date)
+        return "\(commits) · \(date)"
     }
 }
 

@@ -23,4 +23,45 @@ enum ProjectStatus: String, Codable, CaseIterable, Identifiable {
         case .completed: "checkmark.circle"
         }
     }
+
+    var isActive: Bool {
+        self == .planning || self == .inProgress
+    }
+}
+
+/// Filtro da lista de projetos (agrupa ativos, pausados e finalizados).
+enum ProjectListFilter: String, CaseIterable, Identifiable {
+    case all = "Todos"
+    case active = "Ativos"
+    case paused = "Pausados"
+    case completed = "Finalizados"
+
+    var id: String { rawValue }
+
+    var sectionTitle: String {
+        switch self {
+        case .all: "Projetos"
+        case .active: "Ativos"
+        case .paused: "Pausados"
+        case .completed: "Finalizados"
+        }
+    }
+
+    var sectionIcon: String {
+        switch self {
+        case .all: "folder"
+        case .active: "play.circle"
+        case .paused: "pause.circle"
+        case .completed: "checkmark.circle"
+        }
+    }
+
+    func includes(_ status: ProjectStatus) -> Bool {
+        switch self {
+        case .all: true
+        case .active: status.isActive
+        case .paused: status == .paused
+        case .completed: status == .completed
+        }
+    }
 }
