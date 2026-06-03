@@ -40,6 +40,22 @@ struct MainView: View {
                     sidebarRow(.about)
                 }
 
+                if appState.pomodoroService.isActive {
+                    Section("Pomodoro Ativo") {
+                        HStack {
+                            Image(systemName: appState.pomodoroService.phase == .work ? "flame.fill" : "cup.and.saucer.fill")
+                                .foregroundStyle(appState.pomodoroService.phase == .work ? .orange : .green)
+                                .font(.caption)
+                            VStack(alignment: .leading) {
+                                Text(appState.pomodoroService.phaseLabel)
+                                    .font(.caption.weight(.medium))
+                                Text(appState.pomodoroService.displayTime)
+                                    .font(.caption.monospacedDigit())
+                            }
+                        }
+                    }
+                }
+
                 if appState.timerService.isActive {
                     Section("Timer Ativo") {
                         HStack {
@@ -104,8 +120,37 @@ struct MainView: View {
 
     @ViewBuilder
     private func sidebarRow(_ section: SidebarSection) -> some View {
-        Label(section.rawValue, systemImage: section.icon)
+        if let activeTime = sidebarActiveTime(for: section) {
+            Label {
+                HStack {
+                    Text(section.rawValue)
+                    Spacer(minLength: 8)
+                    Text(activeTime)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                }
+            } icon: {
+                Image(systemName: section.icon)
+            }
             .tag(section)
+        } else {
+            Label(section.rawValue, systemImage: section.icon)
+                .tag(section)
+        }
+    }
+
+    private func sidebarActiveTime(for section: SidebarSection) -> String? {
+        switch section {
+        case .timer:
+            guard appState.timerService.isActive else { return nil }
+            return appState.timerService.displayTime
+        case .pomodoro:
+            guard appState.pomodoroService.isActive else { return nil }
+            return appState.pomodoroService.displayTime
+        default:
+            return nil
+        }
     }
 
     @ViewBuilder

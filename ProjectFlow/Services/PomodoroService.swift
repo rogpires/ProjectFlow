@@ -30,6 +30,10 @@ final class PomodoroService {
 
     private var tickTimer: Timer?
 
+    var isActive: Bool { phase != .idle }
+
+    var isTicking: Bool { tickTimer != nil }
+
     var workDuration: Int {
         mode == .custom ? customWorkMinutes : mode.workMinutes
     }

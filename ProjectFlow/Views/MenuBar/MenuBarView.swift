@@ -18,26 +18,22 @@ struct MenuBarView: View {
     @State private var pickerTask: TaskItem?
 
     private var timer: TimerService { appState.timerService }
+    private var pomodoro: PomodoroService { appState.pomodoroService }
 
     var body: some View {
+        @Bindable var state = appState
+
         VStack(alignment: .leading, spacing: 12) {
-            if timer.isActive {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(timer.state == .running ? .green : .orange)
-                        .frame(width: 10, height: 10)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(timer.currentProject?.name ?? "Sem projeto")
-                            .font(.headline)
-                        Text(timer.currentTask?.name ?? "")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+            if state.pomodoroService.isActive {
+                pomodoroPanel
+                if state.timerService.isActive {
+                    Divider()
                 }
-                Text(timer.displayTime)
-                    .font(.system(size: 28, weight: .light, design: .monospaced))
-                    .frame(maxWidth: .infinity)
-            } else {
+            }
+
+            if state.timerService.isActive {
+                timerPanel
+            } else if !state.pomodoroService.isActive {
                 Text("Nenhum timer ativo")
                     .foregroundStyle(.secondary)
             }
@@ -48,23 +44,7 @@ struct MenuBarView: View {
                 Button("Iniciar Timer") {
                     showingPicker = true
                 }
-            } else if timer.state == .running {
-                Button("Pausar") {
-                    timer.pause()
-                }
-                Button("Parar") {
-                    timer.stop()
-                }
-            } else if timer.state == .paused {
-                Button("Retomar") {
-                    timer.resume()
-                }
-                Button("Parar") {
-                    timer.stop()
-                }
-            }
-
-            if timer.isActive {
+            } else if timer.isActive {
                 Button("Trocar Projeto/Tarefa") {
                     pickerProject = timer.currentProject
                     pickerTask = timer.currentTask
@@ -76,6 +56,11 @@ struct MenuBarView: View {
 
             Button("Abrir ProjectFlow") {
                 NSApp.activate(ignoringOtherApps: true)
+                if pomodoro.isActive {
+                    appState.selectedSection = .pomodoro
+                } else if timer.isActive {
+                    appState.selectedSection = .timer
+                }
                 if let window = NSApp.windows.first(where: { $0.title.contains("ProjectFlow") || $0.isMainWindow }) {
                     window.makeKeyAndOrderFront(nil)
                 }
@@ -101,6 +86,59 @@ struct MenuBarView: View {
                     }
                 }
             )
+        }
+    }
+
+    private var timerPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(timer.state == .running ? .green : .orange)
+                    .frame(width: 10, height: 10)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(timer.currentProject?.name ?? "Sem projeto")
+                        .font(.headline)
+                    Text(timer.currentTask?.name ?? "")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Text(timer.displayTime)
+                .font(.system(size: 28, weight: .light, design: .monospaced))
+                .frame(maxWidth: .infinity)
+                .contentTransition(.numericText())
+            HStack {
+                if timer.state == .running {
+                    Button("Pausar") { timer.pause() }
+                } else if timer.state == .paused {
+                    Button("Retomar") { timer.resume() }
+                }
+                Button("Parar") { timer.stop() }
+            }
+        }
+    }
+
+    private var pomodoroPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: pomodoro.phase == .work ? "flame.fill" : "cup.and.saucer.fill")
+                    .foregroundStyle(pomodoro.phase == .work ? .orange : .green)
+                Text(pomodoro.phaseLabel)
+                    .font(.headline)
+            }
+            Text(pomodoro.displayTime)
+                .font(.system(size: 28, weight: .light, design: .monospaced))
+                .frame(maxWidth: .infinity)
+                .contentTransition(.numericText())
+            if let name = pomodoro.currentProject?.name {
+                Text(name)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                Button("Parar") { pomodoro.stop() }
+                Button("Pular fase") { pomodoro.skipPhase() }
+            }
         }
     }
 }
@@ -152,16 +190,34 @@ struct MenuBarLabel: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        HStack(spacing: 4) {
-            if appState.timerService.isActive {
-                Image(systemName: "circle.fill")
-                    .foregroundStyle(appState.timerService.state == .running ? .green : .orange)
-                    .font(.caption2)
-                Text(appState.timerService.currentProject?.name ?? "Timer")
-                    .lineLimit(1)
-                Text(appState.timerService.displayTime)
-                    .monospacedDigit()
-            } else {
+        @Bindable var state = appState
+        let pomodoro = state.pomodoroService
+        let timer = state.timerService
+
+        HStack(spacing: 6) {
+            if pomodoro.isActive {
+                HStack(spacing: 3) {
+                    Image(systemName: pomodoro.phase == .work ? "flame.fill" : "cup.and.saucer.fill")
+                        .foregroundStyle(pomodoro.phase == .work ? .orange : .green)
+                        .font(.caption2)
+                    Text(pomodoro.displayTime)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                }
+            }
+
+            if timer.isActive {
+                HStack(spacing: 3) {
+                    Image(systemName: "circle.fill")
+                        .foregroundStyle(timer.state == .running ? .green : .orange)
+                        .font(.caption2)
+                    Text(timer.displayTime)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                }
+            }
+
+            if !pomodoro.isActive && !timer.isActive {
                 Image(systemName: "timer")
                 Text("ProjectFlow")
             }
