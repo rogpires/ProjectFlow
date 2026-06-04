@@ -116,10 +116,9 @@ struct ProgressRing: View {
             Circle()
                 .stroke(color.opacity(0.2), lineWidth: lineWidth)
             Circle()
-                .trim(from: 0, to: progress)
+                .trim(from: 0, to: max(0, min(1, progress)))
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeInOut, value: progress)
         }
     }
 }

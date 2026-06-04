@@ -43,6 +43,19 @@ enum MetricsService {
         }.reduce(0) { $0 + $1.duration }
     }
 
+    static func hoursToday(for project: Project, entries: [TimeEntry]) -> TimeInterval {
+        let displayEntries = TimeEntryQueryHelper.displayEntries(entries)
+        let todayStart = DateRangeHelper.startOfDay()
+        let todayEnd = DateRangeHelper.endOfDay()
+        return displayEntries
+            .filter {
+                $0.project?.persistentModelID == project.persistentModelID
+                    && $0.startDate >= todayStart
+                    && $0.startDate < todayEnd
+            }
+            .reduce(0) { $0 + $1.duration }
+    }
+
     static func dashboardStats(entries: [TimeEntry], projects: [Project], tasks: [TaskItem]) -> DashboardStats {
         let entries = TimeEntryQueryHelper.displayEntries(entries)
         let now = Date()

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 enum ProjectStatus: String, Codable, CaseIterable, Identifiable {
     case planning = "Planejamento"
@@ -26,6 +27,15 @@ enum ProjectStatus: String, Codable, CaseIterable, Identifiable {
 
     var isActive: Bool {
         self == .planning || self == .inProgress
+    }
+
+    var accentColor: Color {
+        switch self {
+        case .planning: Color.blue
+        case .inProgress: Color.green
+        case .paused: Color.orange
+        case .completed: Color.secondary
+        }
     }
 }
 

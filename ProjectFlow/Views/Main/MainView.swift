@@ -40,37 +40,8 @@ struct MainView: View {
                     sidebarRow(.about)
                 }
 
-                if appState.pomodoroService.isActive {
-                    Section("Pomodoro Ativo") {
-                        HStack {
-                            Image(systemName: appState.pomodoroService.phase == .work ? "flame.fill" : "cup.and.saucer.fill")
-                                .foregroundStyle(appState.pomodoroService.phase == .work ? .orange : .green)
-                                .font(.caption)
-                            VStack(alignment: .leading) {
-                                Text(appState.pomodoroService.phaseLabel)
-                                    .font(.caption.weight(.medium))
-                                Text(appState.pomodoroService.displayTime)
-                                    .font(.caption.monospacedDigit())
-                            }
-                        }
-                    }
-                }
-
-                if appState.timerService.isActive {
-                    Section("Timer Ativo") {
-                        HStack {
-                            Circle()
-                                .fill(appState.timerService.state == .running ? .green : .orange)
-                                .frame(width: 8, height: 8)
-                            VStack(alignment: .leading) {
-                                Text(appState.timerService.currentProject?.name ?? "")
-                                    .font(.caption.weight(.medium))
-                                Text(appState.timerService.displayTime)
-                                    .font(.caption.monospacedDigit())
-                            }
-                        }
-                    }
-                }
+                SidebarPomodoroActiveSection()
+                SidebarTimerActiveSection()
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
@@ -118,39 +89,9 @@ struct MainView: View {
         }
     }
 
-    @ViewBuilder
     private func sidebarRow(_ section: SidebarSection) -> some View {
-        if let activeTime = sidebarActiveTime(for: section) {
-            Label {
-                HStack {
-                    Text(section.rawValue)
-                    Spacer(minLength: 8)
-                    Text(activeTime)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
-                }
-            } icon: {
-                Image(systemName: section.icon)
-            }
+        SidebarSectionLabel(section: section)
             .tag(section)
-        } else {
-            Label(section.rawValue, systemImage: section.icon)
-                .tag(section)
-        }
-    }
-
-    private func sidebarActiveTime(for section: SidebarSection) -> String? {
-        switch section {
-        case .timer:
-            guard appState.timerService.isActive else { return nil }
-            return appState.timerService.displayTime
-        case .pomodoro:
-            guard appState.pomodoroService.isActive else { return nil }
-            return appState.pomodoroService.displayTime
-        default:
-            return nil
-        }
     }
 
     @ViewBuilder
@@ -159,22 +100,7 @@ struct MainView: View {
         case .dashboard:
             DashboardView()
         case .projects:
-            NavigationStack {
-                if let project = appState.selectedProject {
-                    ProjectDetailView(project: project)
-                        .toolbar {
-                            ToolbarItem(placement: .navigation) {
-                                Button {
-                                    appState.selectedProject = nil
-                                } label: {
-                                    Label("Projetos", systemImage: "chevron.left")
-                                }
-                            }
-                        }
-                } else {
-                    ProjectsListView()
-                }
-            }
+            ProjectsNavigationStack()
         case .tasks:
             NavigationStack {
                 AllTasksListView()
@@ -203,6 +129,115 @@ struct MainView: View {
             }
         case .about:
             AboutView()
+        }
+    }
+}
+
+// MARK: - Sidebar (isolado para não resetar scroll do detalhe a cada tick do timer)
+
+private struct SidebarSectionLabel: View {
+    let section: SidebarSection
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        switch section {
+        case .timer where appState.timerService.isActive:
+            Label {
+                HStack {
+                    Text(section.rawValue)
+                    Spacer(minLength: 8)
+                    Text(appState.timerService.displayTime)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                }
+            } icon: {
+                Image(systemName: section.icon)
+            }
+        case .pomodoro where appState.pomodoroService.isActive:
+            Label {
+                HStack {
+                    Text(section.rawValue)
+                    Spacer(minLength: 8)
+                    Text(appState.pomodoroService.displayTime)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                }
+            } icon: {
+                Image(systemName: section.icon)
+            }
+        default:
+            Label(section.rawValue, systemImage: section.icon)
+        }
+    }
+}
+
+private struct SidebarTimerActiveSection: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        if appState.timerService.isActive {
+            Section("Timer Ativo") {
+                HStack {
+                    Circle()
+                        .fill(appState.timerService.state == .running ? .green : .orange)
+                        .frame(width: 8, height: 8)
+                    VStack(alignment: .leading) {
+                        Text(appState.timerService.currentProject?.name ?? "")
+                            .font(.caption.weight(.medium))
+                        Text(appState.timerService.displayTime)
+                            .font(.caption.monospacedDigit())
+                            .contentTransition(.numericText())
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct SidebarPomodoroActiveSection: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        if appState.pomodoroService.isActive {
+            Section("Pomodoro Ativo") {
+                HStack {
+                    Image(systemName: appState.pomodoroService.phase == .work ? "flame.fill" : "cup.and.saucer.fill")
+                        .foregroundStyle(appState.pomodoroService.phase == .work ? .orange : .green)
+                        .font(.caption)
+                    VStack(alignment: .leading) {
+                        Text(appState.pomodoroService.phaseLabel)
+                            .font(.caption.weight(.medium))
+                        Text(appState.pomodoroService.displayTime)
+                            .font(.caption.monospacedDigit())
+                            .contentTransition(.numericText())
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ProjectsNavigationStack: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        NavigationStack {
+            if let project = appState.selectedProject {
+                ProjectDetailView(project: project)
+                    .toolbar {
+                        ToolbarItem(placement: .navigation) {
+                            Button {
+                                appState.selectedProject = nil
+                            } label: {
+                                Label("Projetos", systemImage: "chevron.left")
+                            }
+                        }
+                    }
+            } else {
+                ProjectsListView()
+            }
         }
     }
 }

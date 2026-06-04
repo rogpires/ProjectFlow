@@ -14,7 +14,19 @@ struct ProjectDetailView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(AppState.self) private var appState
     @Bindable var project: Project
-    @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
+    @Query private var projectScopedTasks: [TaskItem]
+
+    init(project: Project) {
+        self.project = project
+        let syncId = project.syncId
+        _projectScopedTasks = Query(
+            filter: #Predicate<TaskItem> { task in
+                task.project?.syncId == syncId
+            },
+            sort: \TaskItem.createdAt,
+            order: .reverse
+        )
+    }
 
     @State private var showingEdit = false
     @State private var showingNewTask = false
@@ -28,11 +40,16 @@ struct ProjectDetailView: View {
     @State private var gitParsedCommitLines = 0
     @State private var gitKrakenError: String?
 
-    private var projectTasks: [TaskItem] {
-        let tasks = TimeEntryQueryHelper.uniqueByID(
-            allTasks.filter { $0.project?.persistentModelID == project.persistentModelID }
-        )
-        return taskSortOption.sort(tasks)
+    private var allProjectTasks: [TaskItem] {
+        taskSortOption.sort(TimeEntryQueryHelper.uniqueByID(projectScopedTasks))
+    }
+
+    private var openProjectTasks: [TaskItem] {
+        allProjectTasks.filter { $0.status != .completed }
+    }
+
+    private var completedProjectTasks: [TaskItem] {
+        allProjectTasks.filter { $0.status == .completed }
     }
 
     var body: some View {
@@ -306,7 +323,7 @@ struct ProjectDetailView: View {
                 .buttonStyle(.borderedProminent)
             }
 
-            if projectTasks.isEmpty {
+            if allProjectTasks.isEmpty {
                 EmptyStateView(
                     icon: "checklist",
                     title: "Sem tarefas",
@@ -314,13 +331,41 @@ struct ProjectDetailView: View {
                 )
                 .frame(height: 200)
             } else {
-                ForEach(projectTasks, id: \.persistentModelID) { task in
-                    TaskRowView(task: task, project: project) {
-                        taskEditContext = TaskEditSheetContext(project: project, task: task)
+                if !openProjectTasks.isEmpty {
+                    ForEach(openProjectTasks, id: \.persistentModelID) { task in
+                        taskRow(task)
+                    }
+                }
+
+                if !completedProjectTasks.isEmpty {
+                    taskSectionDivider(title: "Concluídas", count: completedProjectTasks.count)
+                    ForEach(completedProjectTasks, id: \.persistentModelID) { task in
+                        taskRow(task)
                     }
                 }
             }
         }
+    }
+
+    private func taskRow(_ task: TaskItem) -> some View {
+        TaskRowView(task: task, project: project) {
+            taskEditContext = TaskEditSheetContext(project: project, task: task)
+        }
+    }
+
+    private func taskSectionDivider(title: String, count: Int) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            Text("(\(count))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Rectangle()
+                .fill(.quaternary)
+                .frame(height: 1)
+        }
+        .padding(.top, openProjectTasks.isEmpty ? 0 : 8)
+        .foregroundStyle(.secondary)
     }
 }
 

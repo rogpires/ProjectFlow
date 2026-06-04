@@ -103,14 +103,8 @@ struct ProjectsListView: View {
                 }
             }
         }
-        .id(appState.listRefreshToken)
         .sheet(isPresented: $showingNewProject) {
             ProjectFormView()
-        }
-        .onChange(of: showingNewProject) { _, isShowing in
-            if !isShowing {
-                appState.listRefreshToken = UUID()
-            }
         }
         .navigationTitle("Projetos")
     }
